@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 class MLEXPS:
 
     def __init__(self):
-        print('MLEXPS v2')
+        print('MLEXPS v3')
         self.topic = 'TOPIC'
         self.baseFolder = 'experiments'
         self.exprTimeStamp = 0
@@ -44,6 +44,12 @@ class MLEXPS:
         else:
             self.currArgs['callbacks'] = [checkpoint]
         history = self.currModel.fit(**self.currArgs)
+        self.saveFigures(history)
+
+        self.cleanUpWeights()
+        return
+
+    def saveFigures(self, history):
 
         plt.plot(history.history['accuracy'])
         plt.plot(history.history['val_accuracy'])
@@ -51,7 +57,7 @@ class MLEXPS:
         plt.ylabel('Accuracy')
         plt.xlabel('Epoch')
         plt.legend(['Train', 'Test'], loc='upper left')
-        plt.savefig(self.exprFilePath + '/logs/accuracy.png')
+        plt.savefig(self.exprFilePath + '/logs/training/accuracy.png')
         plt.close()
 
         plt.plot(history.history['loss'])
@@ -59,11 +65,31 @@ class MLEXPS:
         plt.title('Model loss')
         plt.ylabel('Loss')
         plt.xlabel('Epoch')
-        plt.legend(['Train', 'Test'], loc='upper left')
-        plt.savefig(self.exprFilePath + '/logs/loss.png')
+        plt.legend(['Train', 'Test'], loc='lower right')
+        plt.savefig(self.exprFilePath + '/logs/training/loss.png')
         plt.close()
 
-        self.cleanUpWeights()
+        plt.rcParams['figure.figsize'] = [10,5]
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        fig.suptitle('Model Stats')
+        ax1.set_title("Model Accuracy")
+        ax1.set(xlabel='Epoch', ylabel='Accuracy')
+        ax1.plot(history.history['accuracy'])
+        ax1.plot(history.history['val_accuracy'])
+        ax1.legend(['Train', 'Test'], loc='lower right')
+        ax2.set_title("Model Loss")
+        ax2.set(xlabel='Epoch', ylabel='Loss')
+        ax2.plot(history.history['loss'])
+        ax2.plot(history.history['val_loss'])
+        ax2.legend(['Train', 'Test'], loc='upper right')
+        plt.savefig(self.exprFilePath + '/logs/training/combined.png')
+        plt.close()
+
+        for key, value in history.history.items():
+            with open(self.exprFilePath + '/logs/training/' + key + ".csv", 'w') as file:
+                [file.write(str(num)+",") if i != len(value) - 1 else file.write(str(num)) for i, num in enumerate(value)]
+
+
         return
 
     def copyFiles(self):
@@ -78,15 +104,17 @@ class MLEXPS:
         self.exprFilePath = self.baseFolder + "/" + self.topic + "/" + str(self.exprTimeStamp)
         os.makedirs(self.exprFilePath + '/weights', exist_ok=True)
         os.makedirs(self.exprFilePath + '/logs', exist_ok=True)
+        os.makedirs(self.exprFilePath + '/logs/model', exist_ok=True)
+        os.makedirs(self.exprFilePath + '/logs/training', exist_ok=True)
         os.makedirs(self.exprFilePath + '/files', exist_ok=True)
 
         self.exprWeightPath = self.exprFilePath + '/weights' + "/" + "weights-improvement-{epoch:02d}-{val_accuracy:.4f}.hdf5"
         self.copyFiles()
 
         if(self.currModel):
-            with open(self.baseFolder + "/" + self.topic + "/" + str(self.exprTimeStamp) + '/logs' + '/summary.txt', 'w') as file:
+            with open(self.baseFolder + "/" + self.topic + "/" + str(self.exprTimeStamp) + '/logs/model' + '/summary.txt', 'w') as file:
                 self.currModel.summary(print_fn=lambda x: file.write(x + '\n'))
-        plot_model(self.currModel, to_file=self.exprFilePath + '/logs/model.png')
+        plot_model(self.currModel, to_file=self.exprFilePath + '/logs/model/model.png')
         return
 
     def cleanUpWeights(self):
